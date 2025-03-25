@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
 //SignUp
 exports.signup = async (req, res) => {
     try {
-        let { email, password, name, profilePicture } = req.body;
+        let { email, password, name, profileImage } = req.body;
 
         email = email.trim();
         name = name.trim();
@@ -32,7 +32,7 @@ exports.signup = async (req, res) => {
         const hashedPass = await bcrypt.hash(password, 10);
 
         const user = await prisma.user.create({
-            data: { email, name, password: hashedPass, profilePicture: profilePicture || null },
+            data: { email, name, password: hashedPass, profilePicture: profileImage || null },
         });
 
         res.status(201).json({ message: "User created successfully", userId: user.id });
@@ -55,7 +55,7 @@ exports.login = async (req, res) => {
 
         const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: "1h" });
 
-        res.json({ token, userId: user.id });
+        res.json({ token, userId: user.id, name: user.name, email: user.email, profilePicture: user.profilePicture });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
