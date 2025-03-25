@@ -2,13 +2,8 @@ const redisClient = require("../config/redis");
 const Message = require("../models/messageModel");
 
 exports.sendMessage = async (req, res) => {
-    // console.log("Received msgData:", msgData);
 
     const { senderId, receiverId, content, type } = req.body;
-    console.log("senderId:", senderId);
-    console.log("receiverId:", receiverId);
-    console.log("content:", content);
-    console.log("type:", type);
 
     if (!senderId || !receiverId || !content || !type) {
         console.error("Missing required fields in msgData");

@@ -12,14 +12,14 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { 
     cors: { 
-        origin: "*",
+        origin: "http://localhost:3000",
         methods: ["GET", "POST"] 
     } 
 });
 
 global.activeUsers = {};
 
-app.use(cors());
+app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
@@ -27,17 +27,6 @@ app.use("/api/upload", uploadRoutes);
 
 io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
-
-    // socket.on("sendMessage", async (msgData) => {
-    //     console.log("Received sendMessage event:", msgData);
-    //     await sendMessage(io, msgData);
-    // });
-
-    // socket.on("userOnline", async (userId) => {
-    //     console.log(`User ${userId} is online`);
-    //     await userOnline(socket, userId);
-    // });
-
     socket.on("disconnect", () => console.log(`User disconnected: ${socket.id}`));
 });
 

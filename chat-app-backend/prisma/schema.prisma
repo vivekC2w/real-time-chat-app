@@ -18,6 +18,7 @@ model User {
   email    String   @unique
   name     String?
   password String
+  profilePicture String? 
 
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
