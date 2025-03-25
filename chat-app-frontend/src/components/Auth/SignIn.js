@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { login } from "../../redux/actions/authActions";
 import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "../../../src/index.css";
 
 const SignIn = () => {
@@ -19,7 +20,7 @@ const SignIn = () => {
             const response = await dispatch(login(form)); 
             if (response?.success) {
                 toast.success("Login successful! Redirecting...");
-                setTimeout(() => navigate("/chat"), 2000); 
+                setTimeout(() => navigate("/chat"), 1000); 
             }
         } catch (error) {
             toast.error("Login failed. Please try again.");

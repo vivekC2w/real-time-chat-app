@@ -11,9 +11,16 @@ const ChatPage = () => {
     const [messages, setMessages] = useState([]);
     const [users, setUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
-    const { user } = useSelector((state) => state.auth);
+    const [user, setUser] = useState(null);
     const dispatch = useDispatch();
     const socketRef = useRef(null);
+
+    useEffect(() => {
+        const loggedInUser = localStorage.getItem("user");
+        if (loggedInUser) {
+          setUser(JSON.parse(loggedInUser));
+        }
+      }, []);
 
     useEffect(() => {
         if (!socketRef.current) {
@@ -37,6 +44,7 @@ const ChatPage = () => {
     useEffect(() => {
         const fetchUserList = async() => {
             const userList = await fetchUsers();
+            console.log(userList);
             setUsers(userList?.data);
         };
         fetchUserList();
@@ -52,7 +60,6 @@ const ChatPage = () => {
         loadMessages();
     }, [selectedUser]);
 
-    const loggedInUser = users.find((usr) => usr.id === user.userId);
     const handleSend = async () => {
         if (message.trim() === "" || !selectedUser) return;
         const newMessage = { 
@@ -61,9 +68,10 @@ const ChatPage = () => {
             content: message, 
             type: "text" 
         };
-        await sendMessage(newMessage);
+  
         setMessages([...messages, newMessage]);
         socketRef.current.emit("sendMessage", newMessage);
+        await sendMessage(newMessage);
         setMessage("");
     };
 
@@ -75,13 +83,21 @@ const ChatPage = () => {
         }
     };
 
+    if (!user) {
+      return (
+          <div className="flex items-center justify-center h-screen">
+              <p className="text-gray-600 text-lg">Please log in to access the chat</p>
+          </div>
+      );
+  }
+
     return (
       <div className="flex h-screen">
         <div className="w-1/4 bg-gray-900 text-white p-4 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <img
-                src={user?.profilePic}
+                src={user?.profilePicture}
                 alt="avatar"
                 className="w-10 h-10 rounded-full mr-2"
               />
@@ -108,11 +124,11 @@ const ChatPage = () => {
             <>
               <div className="flex items-center bg-white shadow-md p-4">
                 <img
-                  src={selectedUser.profilePic}
+                  src={selectedUser?.profilePicture}
                   alt="avatar"
                   className="w-10 h-10 rounded-full mr-3"
                 />
-                <h3 className="text-lg font-semibold">{selectedUser.name}</h3>
+                <h3 className="text-lg font-semibold">{selectedUser?.name}</h3>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -127,18 +143,18 @@ const ChatPage = () => {
                   >
                     <div
                       className={`p-3 rounded-lg max-w-xs ${
-                        msg.senderId === user.userId
+                        msg.senderId === user?.userId
                           ? "bg-blue-500 text-white"
                           : "bg-gray-300 text-black"
                       }`}
                     >
                       <strong>
-                        {msg.senderId === user.userId
+                        {msg.senderId === user?.userId
                           ? "Me"
-                          : selectedUser.name}
+                          : selectedUser?.name}
                         :
                       </strong>
-                      <p>{msg.content}</p>
+                      <p>{msg?.content}</p>
                     </div>
                   </div>
                 ))}

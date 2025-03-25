@@ -19,30 +19,37 @@ const SignUp = () => {
         setFile(e.target.files[0]);
     }
 
-    const handleUpload = async () => {
-        if (!file) return;
-        const formData = new FormData();
-        formData.append("file", file);
-
-        try {
-            const res = await axios.post("http://localhost:5001/api/upload", formData, {
-                headers: { "Content-Type": "multipart/form-data" }
-            });
-            setForm({ ...form, profileImage: res.data.url });
-        } catch (error) {
-            toast.error("Image upload failed. Please try again.");
-            console.error("File upload failed:", error);
-        }
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (file) await handleUpload();
+    
+        let uploadedImageUrl = form.profileImage; 
+    
+        if (file) {
+            const formData = new FormData();
+            formData.append("file", file);
+    
+            try {
+                const res = await axios.post("http://localhost:5001/api/upload", formData, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                
+                uploadedImageUrl = res.data.url; 
+            } catch (error) {
+                toast.error("Image upload failed. Please try again.");
+                console.error("File upload failed:", error);
+                return; 
+            }
+        }
+
         try {
-            const response = await dispatch(register(form)); 
+            const response = await dispatch(register({ 
+                ...form, 
+                profileImage: uploadedImageUrl  
+            })); 
+    
             if (response?.success) {
                 toast.success("Signup successful! Redirecting...");
-                setTimeout(() => navigate("/chat"), 2000); 
+                setTimeout(() => navigate("/chat"), 1000);
             }
         } catch (error) {
             toast.error("Signup failed. Please try again.");
