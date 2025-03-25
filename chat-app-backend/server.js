@@ -3,7 +3,7 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
-// const redisClient = require("./config/redis");
+const redis = require("./src/config/redis");
 const authRoutes = require("./src/routes/authRoutes");
 const chatRoutes = require("./src/routes/chatRoutes");
 const uploadRoutes = require("./src/routes/uploadRoutes");
@@ -30,7 +30,33 @@ app.use("/api/upload", uploadRoutes);
 
 io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
+
+    socket.on("resendOfflineMessages", async (userId) => {
+        try {
+            const offlineMessages = await redis.zRange(`offlineMessages:${userId}`, 0, -1);
+            offlineMessages.forEach((msg) => {
+                socket.emit("receiveMessage", JSON.parse(msg));
+            });
+            await redis.del(`offlineMessages:${userId}`);
+        } catch (error) {
+            console.error("Error resending messages:", error);
+        }
+    });
+
+    socket.on("sendMessage", async (msg) => {
+        try {
+            io.emit("receiveMessage", msg);
+            await redis.zAdd(`offlineMessages:${msg.receiverId}`, {
+                score: Date.now(),
+                value: JSON.stringify(msg)
+            });            
+        } catch (error) {
+            console.error("Error saving message to Redis:", error);
+        }
+    });
+
     socket.on("disconnect", () => console.log(`User disconnected: ${socket.id}`));
+    
 });
 
 const PORT = process.env.PORT || 5000;
