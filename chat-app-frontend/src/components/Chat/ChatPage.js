@@ -60,13 +60,26 @@ const ChatPage = () => {
         loadMessages();
     }, [selectedUser]);
 
+    useEffect(() => {
+      const handleReconnect = () => {
+        if (socketRef.current && user) {
+          socketRef.current.emit("resendOfflineMessages", user.userId);
+        }
+      };
+      window.addEventListener("online", handleReconnect);
+      return () => {
+        window.removeEventListener("online", handleReconnect);
+      };
+    }, [user]);
+
     const handleSend = async () => {
         if (message.trim() === "" || !selectedUser) return;
         const newMessage = { 
             senderId: user.userId, 
             receiverId: selectedUser.id, 
             content: message, 
-            type: "text" 
+            type: "text",
+            timestamp: Date.now() 
         };
   
         setMessages([...messages, newMessage]);
