@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchMessages, fetchUsers, sendMessage } from "../../utils/api";
+import { useDispatch } from "react-redux";
+import { fetchMessages, fetchUsers, sendMessage, uploadFile } from "../../utils/api";
 import io from "socket.io-client";
 import { logout } from "../../redux/actions/authActions";
 import UserList from "./UserList";
@@ -12,6 +12,7 @@ const ChatPage = () => {
     const [users, setUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [user, setUser] = useState(null);
+    const [file, setFile] = useState(null);
     const dispatch = useDispatch();
     const socketRef = useRef(null);
 
@@ -74,11 +75,20 @@ const ChatPage = () => {
 
     const handleSend = async () => {
         if (message.trim() === "" || !selectedUser) return;
+
+        let fileUrl = "";
+        if (file) {
+            const formData = new FormData();
+            formData.append("file", file);
+            const uploadResponse = await uploadFile(formData);
+            fileUrl = uploadResponse?.data?.fileUrl;
+        }
+
         const newMessage = { 
             senderId: user.userId, 
             receiverId: selectedUser.id, 
-            content: message, 
-            type: "text",
+            content: file ? fileUrl : message, 
+            type: file ? "media" : "text",
             timestamp: Date.now() 
         };
   
@@ -86,6 +96,11 @@ const ChatPage = () => {
         socketRef.current.emit("sendMessage", newMessage);
         await sendMessage(newMessage);
         setMessage("");
+        setFile(null);
+    };
+
+    const handleFileChange = (e) => {
+      setFile(e.target.files[0]);
     };
 
     const handleLogout = () => {
@@ -181,6 +196,7 @@ const ChatPage = () => {
                   placeholder="Type a message..."
                   className="flex-1 border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
+                <input type="file" onChange={handleFileChange} className="ml-2" />
                 <button
                   onClick={handleSend}
                   className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"

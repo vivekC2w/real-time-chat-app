@@ -15,3 +15,5 @@ export const messageAck = (msgId) => API.post("/chat/ack", { msgId });
 export const fetchUsers = () => API.get("/auth/users");
 export const fetchMessages = (senderId, receiverId) => 
     API.get(`/auth/messages`, { params: { senderId, receiverId } }); 
+
+export const uploadFile = (formData) => API.post("/upload", formData);
