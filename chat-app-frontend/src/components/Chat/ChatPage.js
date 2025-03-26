@@ -45,7 +45,6 @@ const ChatPage = () => {
     useEffect(() => {
         const fetchUserList = async() => {
             const userList = await fetchUsers();
-            console.log(userList);
             setUsers(userList?.data);
         };
         fetchUserList();
@@ -74,27 +73,42 @@ const ChatPage = () => {
     }, [user]);
 
     const handleSend = async () => {
-        if (message.trim() === "" || !selectedUser) return;
+        if ((!message.trim() && !file) || !selectedUser) return;
 
         let fileUrl = "";
         if (file) {
             const formData = new FormData();
             formData.append("file", file);
-            const uploadResponse = await uploadFile(formData);
-            fileUrl = uploadResponse?.data?.fileUrl;
+            try {
+              const uploadResponse = await uploadFile(formData);
+                if (uploadResponse?.data?.url) {
+                    fileUrl = uploadResponse.data.url;
+                } else {
+                    console.error("File upload failed: No fileUrl returned");
+                    return;
+                }
+              } catch (error) {
+                  console.error("File upload error:", error);
+                  return;
+              }
         }
-
+        console.log("File-->",file);
         const newMessage = { 
             senderId: user.userId, 
             receiverId: selectedUser.id, 
             content: file ? fileUrl : message, 
-            type: file ? "media" : "text",
+            type: file?.type ?? "text",
             timestamp: Date.now() 
         };
-  
         setMessages([...messages, newMessage]);
         socketRef.current.emit("sendMessage", newMessage);
-        await sendMessage(newMessage);
+
+        try {
+          await sendMessage(newMessage); 
+        } catch (error) {
+          console.error("Error sending message:", error);
+        }
+
         setMessage("");
         setFile(null);
     };
@@ -182,7 +196,24 @@ const ChatPage = () => {
                           : selectedUser?.name}
                         :
                       </strong>
-                      <p>{msg?.content}</p>
+                      {msg.type === "text" ? (
+                        <p>{msg?.content}</p>
+                      ) : msg.type.includes("image") ? (
+                        <img
+                          src={msg.content}
+                          alt="Sent image"
+                          className="max-w-full rounded-md mt-2"
+                        />
+                      ) : (
+                        <a
+                          href={msg.content}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-300 underline mt-2 block"
+                        >
+                          View File
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -191,12 +222,21 @@ const ChatPage = () => {
               <div className="p-4 bg-white flex items-center">
                 <input
                   type="text"
+                  id="messageInput"
+                  name="message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Type a message..."
+                  autoComplete="off"
                   className="flex-1 border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
-                <input type="file" onChange={handleFileChange} className="ml-2" />
+                <input
+                  type="file"
+                  id="fileInput"
+                  name="file"
+                  onChange={handleFileChange}
+                  className="ml-2"
+                />
                 <button
                   onClick={handleSend}
                   className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
