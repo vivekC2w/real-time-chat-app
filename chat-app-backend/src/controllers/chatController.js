@@ -1,6 +1,7 @@
 const redisClient = require("../config/redis");
 const { saveFile } = require("../helper/utility");
 const Message = require("../models/messageModel");
+const { v4: uuidv4 } = require("uuid");
 
 exports.sendMessage = async (req, res) => {
 
@@ -24,6 +25,7 @@ exports.sendMessage = async (req, res) => {
         }
         res.json({ message: "Message sent successfully" });
     } catch (error) {
+        console.error("Error sending message:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 };
