@@ -6,7 +6,7 @@ Installation & Running the Project
 Backend Setup
 
 Navigate to the backend directory:
-cd backend
+cd chat-app-backend
 
 Install dependencies:
 npm install
@@ -14,13 +14,21 @@ npm install
 Create a .env file inside the backend directory and add the following:
 
 DATABASE_URL="postgresql://chat-app_owner:npg_Fsd3eLPvni7j@ep-damp-resonance-a5i6wxzx-pooler.us-east-2.aws.neon.tech/chat-app?sslmode=require"
+
 REDIS_URL="redis://localhost:6379"
+
 PORT=5001
+
 FRONTEND_URL="http://localhost:3000"
+
 AWS_ACCESS_KEY_ID=
+
 AWS_SECRET_ACCESS_KEY=
+
 S3_BUCKET_NAME=chat-application-uploads
+
 REGION=us-east-1
+
 JWT_SECRET=chat-app-secret-key
 
 Start the backend server:
@@ -29,7 +37,7 @@ npm start
 Frontend Setup
 
 Navigate to the frontend directory:
-cd frontend
+cd chat-app-frontend
 
 Install dependencies:
 npm install
