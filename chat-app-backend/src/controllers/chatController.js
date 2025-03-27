@@ -14,14 +14,17 @@ exports.sendMessage = async (req, res) => {
     try {
         //msg have a unique identifier and timestamp
         const messageId = uuidv4();
-        const msg = await Message.create({ _id: messageId, senderId, receiverId, content, type, timestamp });
+        const msg = await Message.create({ _id: messageId, senderId, receiverId, content, type, timestamp, status: "sent" });
 
         const recipientSocketId = global.activeUsers[receiverId];
         if (recipientSocketId) {
-            const orderedMessages = await Message.find({ receiverId }).sort({ timestamp: 1 });
-            io.to(recipientSocketId).emit("receiveMessage", orderedMessages);
+            // const orderedMessages = await Message.find({ receiverId }).sort({ timestamp: 1 });
+            io.to(recipientSocketId).emit("receiveMessage", msg);
         } else {
-            await redisClient.zAdd(`offlineMessages:${receiverId}`, JSON.stringify(msg));
+            await redisClient.zAdd(`offlineMessages:${receiverId}`, {
+                score: timestamp || Date.now(),
+                value: JSON.stringify(msg)
+            });
         }
         res.json({ message: "Message sent successfully" });
     } catch (error) {
@@ -32,14 +35,28 @@ exports.sendMessage = async (req, res) => {
 
 exports.userOnline = async (socket, userId) => {
     global.activeUsers[userId] = socket.id;
-
-    const msgs = await redisClient.zRange(`offlineMessages:${userId}`, 0, -1);
+    try {
+        const msgs = await redisClient.zRange(`offlineMessages:${userId}`, 0, -1);
 
     if (msgs.length > 0) {
         msgs.forEach((msg) => {
             socket.emit("receiveMessage", JSON.parse(msg));
         });
         await redisClient.del(`offlineMessages:${userId}`);
+    }
+
+    const undeliveredMsgs = await Message.find({ receiverId: userId, status: "sent" }).sort({ timestamp: 1 });
+
+        if (undeliveredMsgs.length > 0) {
+            undeliveredMsgs.forEach((msg) => {
+                socket.emit("receiveMessage", msg);
+            });
+
+            // Update message status to "delivered" after sending
+            await Message.updateMany({ receiverId: userId, status: "sent" }, { $set: { status: "delivered" } });
+        }
+    } catch (error) {
+        console.error("Error fetching offline messages:", error);
     }
 };
 

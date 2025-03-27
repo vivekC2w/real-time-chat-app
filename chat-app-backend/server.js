@@ -31,6 +31,20 @@ app.use("/api/upload", uploadRoutes);
 io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
 
+    socket.on("online", async (userId) => {
+        global.activeUsers[userId] = socket.id;
+
+        try {
+            const offlineMessages = await redis.zRange(`offlineMessages:${userId}`, 0, -1);
+            offlineMessages.forEach((msg) => {
+                socket.emit("receiveMessage", JSON.parse(msg));
+            });
+            await redis.del(`offlineMessages:${userId}`);
+        } catch (error) {
+            console.error("Error resending messages:", error);
+        }
+    })
+
     socket.on("resendOfflineMessages", async (userId) => {
         try {
             const offlineMessages = await redis.zRange(`offlineMessages:${userId}`, 0, -1);
@@ -45,13 +59,19 @@ io.on("connection", (socket) => {
 
     socket.on("sendMessage", async (msg) => {
         try {
-            io.emit("receiveMessage", msg);
-            await redis.zAdd(`offlineMessages:${msg.receiverId}`, {
-                score: Date.now(),
-                value: JSON.stringify(msg)
-            });            
+            const recipientSocketId = global.activeUsers[msg.receiverId];
+    
+            if (recipientSocketId) {
+                io.to(recipientSocketId).emit("receiveMessage", msg);
+            } else {
+                // Store in Redis only if the recipient is offline
+                await redis.zAdd(`offlineMessages:${msg.receiverId}`, {
+                    score: Date.now(),
+                    value: JSON.stringify(msg),
+                });
+            }
         } catch (error) {
-            console.error("Error saving message to Redis:", error);
+            console.error("Error handling message:", error);
         }
     });
 
