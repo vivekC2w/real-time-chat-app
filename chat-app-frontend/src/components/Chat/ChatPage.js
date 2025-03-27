@@ -64,13 +64,20 @@ const ChatPage = () => {
       const handleReconnect = () => {
         if (socketRef.current && user) {
           socketRef.current.emit("resendOfflineMessages", user.userId);
+          const offlineMessages = JSON.parse(localStorage.getItem("offlineMessages") || "[]");
+            if (offlineMessages.length > 0) {
+                offlineMessages.forEach((msg) => {
+                    socketRef.current.emit("sendMessage", msg);
+                });
+                localStorage.removeItem("offlineMessages");
+            }
         }
       };
       window.addEventListener("online", handleReconnect);
       return () => {
         window.removeEventListener("online", handleReconnect);
       };
-    }, [user]);
+    }, []);
 
     const handleSend = async () => {
         if ((!message.trim() && !file) || !selectedUser) return;
@@ -100,15 +107,26 @@ const ChatPage = () => {
             type: file?.type ?? "text",
             timestamp: Date.now() 
         };
-        setMessages([...messages, newMessage]);
+        
         socketRef.current.emit("sendMessage", newMessage);
 
-        try {
-          await sendMessage(newMessage); 
-        } catch (error) {
-          console.error("Error sending message:", error);
+        if (navigator.onLine) {
+          console.log("Is Online message?");
+          socketRef.current.emit("sendMessage", newMessage);
+          try {
+              await sendMessage(newMessage);
+          } catch (error) {
+              console.error("Error sending message:", error);
+          }
+        } else {
+            console.log("Offline message:", newMessage);
+            console.log("Storing in local storage");
+            const offlineMessages = JSON.parse(localStorage.getItem("offlineMessages") || "[]");
+            offlineMessages.push(newMessage);
+            console.log("Setting message in local storage");
+            localStorage.setItem("offlineMessages", JSON.stringify(offlineMessages));
         }
-
+        setMessages((prev) => [...prev, newMessage]);
         setMessage("");
         setFile(null);
     };
