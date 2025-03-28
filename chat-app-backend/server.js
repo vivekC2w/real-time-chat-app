@@ -7,6 +7,19 @@ const redis = require("./src/config/redis");
 const authRoutes = require("./src/routes/authRoutes");
 const chatRoutes = require("./src/routes/chatRoutes");
 const uploadRoutes = require("./src/routes/uploadRoutes");
+const { Pool } = require("pg");
+const { v4: uuidv4 } = require("uuid");
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL, 
+    ssl: {
+        rejectUnauthorized: false, 
+    },
+});
+
+pool.connect()
+    .then(() => console.log("Connected to PostgreSQL Database ✅"))
+    .catch(err => console.error("Database Connection Error ❌", err));
 
 const app = express();
 const server = http.createServer(app);
@@ -30,16 +43,19 @@ app.use("/api/upload", uploadRoutes);
 
 io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
-
+    
     socket.on("online", async (userId) => {
+        console.log(`User ${userId} is online. Checking for offline messages...`);
+        if (!userId) return;
         global.activeUsers[userId] = socket.id;
-
         try {
             const offlineMessages = await redis.zRange(`offlineMessages:${userId}`, 0, -1);
-            offlineMessages.forEach((msg) => {
-                socket.emit("receiveMessage", JSON.parse(msg));
-            });
-            await redis.del(`offlineMessages:${userId}`);
+            if (offlineMessages.length > 0) {
+                offlineMessages.forEach((msg) => {
+                    socket.emit("receiveMessage", JSON.parse(msg));
+                });
+                await redis.del(`offlineMessages:${userId}`);
+            }
         } catch (error) {
             console.error("Error resending messages:", error);
         }
@@ -58,17 +74,24 @@ io.on("connection", (socket) => {
     });
 
     socket.on("sendMessage", async (msg) => {
+        console.log("Message sending",msg);
+        if (!msg.receiverId) return;
+        const recipientSocketId = global.activeUsers[msg.receiverId];
         try {
-            const recipientSocketId = global.activeUsers[msg.receiverId];
-    
+            const messageId = uuidv4();
+            await pool.query(
+                'INSERT INTO "Message" ("id", "senderId", "receiverId", "content", "type", "timestamp") VALUES ($1, $2, $3, $4, $5, $6)',
+                [messageId, msg.senderId, msg.receiverId, msg.content, msg.type, new Date(msg.timestamp)]
+            );            
+            console.log("Message saved in the database:", msg);
             if (recipientSocketId) {
                 io.to(recipientSocketId).emit("receiveMessage", msg);
             } else {
                 // Store in Redis only if the recipient is offline
-                await redis.zAdd(`offlineMessages:${msg.receiverId}`, {
+                await redis.zAdd(`offlineMessages:${msg.receiverId}`, [{
                     score: Date.now(),
                     value: JSON.stringify(msg),
-                });
+                }]);
             }
         } catch (error) {
             console.error("Error handling message:", error);
