@@ -25,13 +25,15 @@ const ChatPage = () => {
 
     useEffect(() => {
         if (!socketRef.current) {
-            socketRef.current = io("http://localhost:5001");
+            socketRef.current = io("http://localhost:5001", {
+              query: { userId: user?.userId }
+          });
 
             socketRef.current.on("receiveMessage", (msg) => {
-                setMessage((prev) => [...prev, msg]);
+              setMessages((prev) => [...prev, msg]);
             });
 
-            if (user) socketRef.current.emit("userOnline", user.id);
+            if (user) socketRef.current.emit("online", user.id);
         }
 
         return () => {
@@ -77,7 +79,7 @@ const ChatPage = () => {
       return () => {
         window.removeEventListener("online", handleReconnect);
       };
-    }, []);
+    }, [user]);
 
     const handleSend = async () => {
         if ((!message.trim() && !file) || !selectedUser) return;
@@ -99,7 +101,6 @@ const ChatPage = () => {
                   return;
               }
         }
-        console.log("File-->",file);
         const newMessage = { 
             senderId: user.userId, 
             receiverId: selectedUser.id, 
@@ -107,8 +108,6 @@ const ChatPage = () => {
             type: file?.type ?? "text",
             timestamp: Date.now() 
         };
-        
-        socketRef.current.emit("sendMessage", newMessage);
 
         if (navigator.onLine) {
           console.log("Is Online message?");
