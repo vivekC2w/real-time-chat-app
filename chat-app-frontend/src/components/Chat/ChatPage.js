@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
-import { fetchMessages, fetchUsers, sendMessage, uploadFile } from "../../utils/api";
+import { fetchMessages, fetchUsers, uploadFile } from "../../utils/api";
 import io from "socket.io-client";
 import { logout } from "../../redux/actions/authActions";
 import UserList from "./UserList";
@@ -112,11 +112,6 @@ const ChatPage = () => {
         if (navigator.onLine) {
           console.log("Is Online message?");
           socketRef.current.emit("sendMessage", newMessage);
-          try {
-              await sendMessage(newMessage);
-          } catch (error) {
-              console.error("Error sending message:", error);
-          }
         } else {
             console.log("Offline message:", newMessage);
             console.log("Storing in local storage");
